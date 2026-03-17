@@ -290,7 +290,10 @@ if(!empty(get_option('rcfwc_key')) && !empty(get_option('rcfwc_secret'))) {
 
   	// Woo Checkout
   	if( get_option('rcfwc_key') && get_option('rcfwc_woo_checkout') ) {
-		if(empty(get_option('rcfwc_woo_checkout_pos')) || get_option('rcfwc_woo_checkout_pos') == "beforepay" || get_option('rcfwc_woo_checkout_pos') == "beforesubmit") {
+		if(empty(get_option('rcfwc_woo_checkout_pos')) || get_option('rcfwc_woo_checkout_pos') == "beforepay") {
+			add_action('woocommerce_review_order_before_payment', 'rcfwc_field_checkout', 10);
+			add_filter('render_block_woocommerce/checkout-payment-block', 'rcfwc_render_pre_block', 999, 1); // Before Payment block.
+		} elseif(get_option('rcfwc_woo_checkout_pos') == "beforesubmit") {
 			add_action('woocommerce_review_order_before_submit', 'rcfwc_field_checkout', 10);
 			add_filter('render_block_woocommerce/checkout-payment-block', 'rcfwc_render_pre_block', 999, 1); // Before Payment block.
 		} elseif(get_option('rcfwc_woo_checkout_pos') == "afterpay") {

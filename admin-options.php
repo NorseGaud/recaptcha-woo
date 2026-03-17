@@ -243,6 +243,9 @@ function rcfwc_settings_page() {
                                     <option value="beforepay" <?php if (!get_option('rcfwc_woo_checkout_pos') || get_option('rcfwc_woo_checkout_pos') == "beforepay") { ?>selected<?php } ?>>
                                         <?php esc_html_e('Before Payment', 'recaptcha-woo'); ?>
                                     </option>
+                                    <option value="beforesubmit" <?php if (get_option('rcfwc_woo_checkout_pos') == "beforesubmit") { ?>selected<?php } ?>>
+                                        <?php esc_html_e('Before Payment Submit Button', 'recaptcha-woo'); ?>
+                                    </option>
                                     <option value="afterpay" <?php if (get_option('rcfwc_woo_checkout_pos') == "afterpay") { ?>selected<?php } ?>>
                                         <?php esc_html_e('After Payment', 'recaptcha-woo'); ?>
                                     </option>
