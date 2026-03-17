@@ -60,6 +60,20 @@ if(get_option('rcfwc_scripts_all', true)) {
 function rcfwc_script_enqueue() {
 	wp_enqueue_script( 'rcfwc-js', plugins_url( '/js/rcfwc.js', __FILE__ ), array('jquery'), '1.0', array('strategy' => 'defer'));
 	wp_enqueue_script( 'recaptcha', 'https://www.google.com/recaptcha/api.js?hl=' . get_locale(), array(), null, array('strategy' => 'defer'));
+	wp_localize_script(
+		'rcfwc-js',
+		'rcfwcCheckoutConfig',
+		array(
+			'blockSubmitUntilRecaptcha' => (bool) get_option( 'rcfwc_block_checkout_submit' ),
+			'guestOnly'                 => (bool) get_option( 'rcfwc_guest_only' ),
+			'isUserLoggedIn'            => is_user_logged_in(),
+			'skippedPaymentMethods'     => (array) get_option( 'rcfwc_selected_payment_methods', array() ),
+			'messages'                  => array(
+				'completeRecaptcha' => __( 'Please complete the reCAPTCHA to verify that you are not a robot.', 'recaptcha-woo' ),
+				'recaptchaRequired' => __( 'reCAPTCHA is required before you can place your order.', 'recaptcha-woo' ),
+			),
+		)
+	);
 }
 add_action("wp_enqueue_scripts", "rcfwc_script");
 function rcfwc_script() {

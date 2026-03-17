@@ -1,7 +1,149 @@
 /* Woo Checkout */
 jQuery(document).ready(function() {
+    var checkoutButtonSelector = '#place_order, .wc-block-components-checkout-place-order-button';
+    var checkoutEventSelector = 'update_checkout updated_checkout applied_coupon_in_checkout removed_coupon_in_checkout checkout_error';
+
+    function rcfwcGetCheckoutConfig() {
+        return window.rcfwcCheckoutConfig || {};
+    }
+
+    function rcfwcShouldBlockSubmitFeatureRun() {
+        var checkoutConfig = rcfwcGetCheckoutConfig();
+        return checkoutConfig.blockSubmitUntilRecaptcha === true;
+    }
+
+    function rcfwcIsRecaptchaRequiredForCurrentCustomer() {
+        var checkoutConfig = rcfwcGetCheckoutConfig();
+        if (checkoutConfig.guestOnly === true && checkoutConfig.isUserLoggedIn === true) {
+            return false;
+        }
+        return true;
+    }
+
+    function rcfwcGetSelectedPaymentMethod() {
+        var selectedPaymentRadio = jQuery('input[name="payment_method"]:checked');
+        return selectedPaymentRadio.length ? selectedPaymentRadio.val() : '';
+    }
+
+    function rcfwcIsSelectedPaymentMethodSkipped() {
+        var checkoutConfig = rcfwcGetCheckoutConfig();
+        var selectedPaymentMethod = rcfwcGetSelectedPaymentMethod();
+        if (!selectedPaymentMethod || !Array.isArray(checkoutConfig.skippedPaymentMethods)) {
+            return false;
+        }
+        return checkoutConfig.skippedPaymentMethods.indexOf(selectedPaymentMethod) !== -1;
+    }
+
+    function rcfwcHasAnyRecaptchaResponse() {
+        var hasResponse = false;
+
+        if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse === 'function') {
+            jQuery('.g-recaptcha').each(function() {
+                var recaptchaContainer = jQuery(this);
+                var existingWidgetId = recaptchaContainer.attr('data-rcfwc-widget-id');
+                if (existingWidgetId !== undefined && existingWidgetId !== '') {
+                    try {
+                        if (grecaptcha.getResponse(parseInt(existingWidgetId, 10))) {
+                            hasResponse = true;
+                            return false;
+                        }
+                    } catch (error) {
+                        // Ignore stale widget IDs during checkout refreshes.
+                    }
+                }
+            });
+        }
+
+        if (hasResponse) {
+            return true;
+        }
+
+        var tokenFieldValue = (jQuery('textarea[name="g-recaptcha-response"]').first().val() || '').trim();
+        return tokenFieldValue !== '';
+    }
+
+    function rcfwcShouldBlockSubmitNow() {
+        if (!rcfwcShouldBlockSubmitFeatureRun()) {
+            return false;
+        }
+        if (!rcfwcIsRecaptchaRequiredForCurrentCustomer()) {
+            return false;
+        }
+        if (rcfwcIsSelectedPaymentMethodSkipped()) {
+            return false;
+        }
+        if (jQuery('.g-recaptcha').length === 0) {
+            return false;
+        }
+        return !rcfwcHasAnyRecaptchaResponse();
+    }
+
+    function rcfwcShowRecaptchaNotice() {
+        var checkoutConfig = rcfwcGetCheckoutConfig();
+        var message = (checkoutConfig.messages && checkoutConfig.messages.completeRecaptcha) ? checkoutConfig.messages.completeRecaptcha : 'Please complete the reCAPTCHA challenge.';
+
+        if (jQuery('.rcfwc-checkout-recaptcha-notice').length) {
+            return;
+        }
+
+        var errorMarkup = '<ul class="woocommerce-error rcfwc-checkout-recaptcha-notice" role="alert"><li>' + message + '</li></ul>';
+        var noticeContainer = jQuery('.woocommerce-notices-wrapper').first();
+
+        if (noticeContainer.length) {
+            noticeContainer.prepend(errorMarkup);
+        } else {
+            jQuery('form.checkout').first().prepend(errorMarkup);
+        }
+    }
+
+    function rcfwcUpdateSubmitRequirementNote() {
+        var checkoutConfig = rcfwcGetCheckoutConfig();
+        var recaptchaRequiredMessage = (checkoutConfig.messages && checkoutConfig.messages.recaptchaRequired) ? checkoutConfig.messages.recaptchaRequired : 'reCAPTCHA is required before you can place your order.';
+        var noteSelector = '.rcfwc-submit-recaptcha-note';
+        var shouldShowNote = rcfwcShouldBlockSubmitFeatureRun()
+            && rcfwcIsRecaptchaRequiredForCurrentCustomer()
+            && !rcfwcIsSelectedPaymentMethodSkipped()
+            && jQuery('.g-recaptcha').length > 0;
+
+        if (!shouldShowNote) {
+            jQuery(noteSelector).remove();
+            return;
+        }
+
+        var noteMarkup = '<p class="rcfwc-submit-recaptcha-note" style="margin: 0 0 10px; font-size: 13px; color: #6b7280;">' + recaptchaRequiredMessage + '</p>';
+        var classicButton = jQuery('#place_order').first();
+        if (classicButton.length) {
+            if (!classicButton.prev().is(noteSelector)) {
+                jQuery(noteSelector).remove();
+                classicButton.before(noteMarkup);
+            }
+            return;
+        }
+
+        var blockButton = jQuery('.wc-block-components-checkout-place-order-button').first();
+        if (blockButton.length) {
+            var blockButtonContainer = blockButton.closest('.wc-block-components-checkout-place-order');
+            if (blockButtonContainer.length && blockButtonContainer.prev().is(noteSelector) === false) {
+                jQuery(noteSelector).remove();
+                blockButtonContainer.before(noteMarkup);
+            }
+        }
+    }
+
+    function rcfwcUpdatePlaceOrderButtonsState() {
+        if (!rcfwcShouldBlockSubmitFeatureRun()) {
+            rcfwcUpdateSubmitRequirementNote();
+            return;
+        }
+
+        var shouldBlockNow = rcfwcShouldBlockSubmitNow();
+        jQuery(checkoutButtonSelector).prop('disabled', shouldBlockNow).attr('aria-disabled', shouldBlockNow ? 'true' : 'false');
+        rcfwcUpdateSubmitRequirementNote();
+    }
+
     function rcfwcRenderOrResetClassicWidgets() {
         if (typeof grecaptcha === 'undefined' || typeof grecaptcha.render !== 'function') {
+            rcfwcUpdatePlaceOrderButtonsState();
             return;
         }
 
@@ -14,7 +156,14 @@ jQuery(document).ready(function() {
                 try {
                     var newlyRenderedWidgetId = grecaptcha.render(this, {
                         sitekey: recaptchaContainer.attr('data-sitekey'),
-                        theme: recaptchaContainer.attr('data-theme') || 'light'
+                        theme: recaptchaContainer.attr('data-theme') || 'light',
+                        callback: function() {
+                            jQuery('.rcfwc-checkout-recaptcha-notice').remove();
+                            rcfwcUpdatePlaceOrderButtonsState();
+                        },
+                        'expired-callback': function() {
+                            rcfwcUpdatePlaceOrderButtonsState();
+                        }
                     });
                     recaptchaContainer.attr('data-rcfwc-widget-id', newlyRenderedWidgetId);
                 } catch (error) {
@@ -31,12 +180,42 @@ jQuery(document).ready(function() {
                 }
             }
         });
+        rcfwcUpdatePlaceOrderButtonsState();
     }
 
     rcfwcRenderOrResetClassicWidgets();
 
-    jQuery(document.body).on('update_checkout updated_checkout applied_coupon_in_checkout removed_coupon_in_checkout checkout_error', function() {
-        setTimeout(rcfwcRenderOrResetClassicWidgets, 0);
+    jQuery(document).on('click', checkoutButtonSelector, function(event) {
+        if (!rcfwcShouldBlockSubmitNow()) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        rcfwcShowRecaptchaNotice();
+        rcfwcUpdatePlaceOrderButtonsState();
+    });
+
+    jQuery(document).on('submit', 'form.checkout', function(event) {
+        if (!rcfwcShouldBlockSubmitNow()) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        rcfwcShowRecaptchaNotice();
+        rcfwcUpdatePlaceOrderButtonsState();
+    });
+
+    jQuery(document.body).on(checkoutEventSelector, function() {
+        setTimeout(function() {
+            rcfwcRenderOrResetClassicWidgets();
+            rcfwcUpdatePlaceOrderButtonsState();
+        }, 0);
+    });
+
+    jQuery(document.body).on('change', 'input[name="payment_method"]', function() {
+        setTimeout(rcfwcUpdatePlaceOrderButtonsState, 0);
     });
 });
 
@@ -50,6 +229,10 @@ jQuery(document).ready(function() {
                     wp.data.dispatch('wc/store/checkout').__internalSetExtensionData('rcfwc', { token: token });
                 }
             } catch (e) {}
+            if (window.rcfwcCheckoutConfig && window.rcfwcCheckoutConfig.blockSubmitUntilRecaptcha === true) {
+                jQuery('.rcfwc-checkout-recaptcha-notice').remove();
+                jQuery('#place_order, .wc-block-components-checkout-place-order-button').prop('disabled', false).attr('aria-disabled', 'false');
+            }
         };
         window.rcfwcRecaptchaExpired = function() {
             try {
@@ -57,6 +240,9 @@ jQuery(document).ready(function() {
                     wp.data.dispatch('wc/store/checkout').__internalSetExtensionData('rcfwc', { token: '' });
                 }
             } catch (e) {}
+            if (window.rcfwcCheckoutConfig && window.rcfwcCheckoutConfig.blockSubmitUntilRecaptcha === true) {
+                jQuery('#place_order, .wc-block-components-checkout-place-order-button').prop('disabled', true).attr('aria-disabled', 'true');
+            }
         };
 
         // Try to render explicitly if needed once the blocks mount/update
