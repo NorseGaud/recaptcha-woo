@@ -58,7 +58,8 @@ if(get_option('rcfwc_scripts_all', true)) {
 	add_action("wp_enqueue_scripts", "rcfwc_script_enqueue");
 }
 function rcfwc_script_enqueue() {
-	wp_enqueue_script( 'rcfwc-js', plugins_url( '/js/rcfwc.js', __FILE__ ), array('jquery'), '1.0', array('strategy' => 'defer'));
+	$rcfwc_script_version = file_exists( plugin_dir_path( __FILE__ ) . 'js/rcfwc.js' ) ? (string) filemtime( plugin_dir_path( __FILE__ ) . 'js/rcfwc.js' ) : '1.0';
+	wp_enqueue_script( 'rcfwc-js', plugins_url( '/js/rcfwc.js', __FILE__ ), array('jquery'), $rcfwc_script_version, array('strategy' => 'defer'));
 	wp_enqueue_script( 'recaptcha', 'https://www.google.com/recaptcha/api.js?hl=' . get_locale(), array(), null, array('strategy' => 'defer'));
 	wp_localize_script(
 		'rcfwc-js',

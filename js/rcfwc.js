@@ -1,4 +1,17 @@
 /* Woo Checkout */
+function rcfwcIsTruthyValue(value) {
+    if (value === true || value === 1) {
+        return true;
+    }
+
+    if (typeof value === 'string') {
+        var normalizedValue = value.toLowerCase();
+        return normalizedValue === '1' || normalizedValue === 'true' || normalizedValue === 'yes' || normalizedValue === 'on';
+    }
+
+    return false;
+}
+
 jQuery(document).ready(function() {
     var checkoutButtonSelector = '#place_order, .wc-block-components-checkout-place-order-button';
     var checkoutEventSelector = 'update_checkout updated_checkout applied_coupon_in_checkout removed_coupon_in_checkout checkout_error';
@@ -9,12 +22,12 @@ jQuery(document).ready(function() {
 
     function rcfwcShouldBlockSubmitFeatureRun() {
         var checkoutConfig = rcfwcGetCheckoutConfig();
-        return checkoutConfig.blockSubmitUntilRecaptcha === true;
+        return rcfwcIsTruthyValue(checkoutConfig.blockSubmitUntilRecaptcha);
     }
 
     function rcfwcIsRecaptchaRequiredForCurrentCustomer() {
         var checkoutConfig = rcfwcGetCheckoutConfig();
-        if (checkoutConfig.guestOnly === true && checkoutConfig.isUserLoggedIn === true) {
+        if (rcfwcIsTruthyValue(checkoutConfig.guestOnly) && rcfwcIsTruthyValue(checkoutConfig.isUserLoggedIn)) {
             return false;
         }
         return true;
@@ -96,6 +109,29 @@ jQuery(document).ready(function() {
         }
     }
 
+    function rcfwcSetRecaptchaValidationState(isInvalid) {
+        jQuery('.g-recaptcha').each(function() {
+            var recaptchaContainer = jQuery(this);
+
+            if (isInvalid) {
+                recaptchaContainer.css({
+                    border: '2px solid #dc2626',
+                    borderRadius: '6px',
+                    padding: '8px',
+                    backgroundColor: '#fff5f5'
+                });
+                return;
+            }
+
+            recaptchaContainer.css({
+                border: '',
+                borderRadius: '',
+                padding: '',
+                backgroundColor: ''
+            });
+        });
+    }
+
     function rcfwcUpdateSubmitRequirementNote() {
         var checkoutConfig = rcfwcGetCheckoutConfig();
         var recaptchaRequiredMessage = (checkoutConfig.messages && checkoutConfig.messages.recaptchaRequired) ? checkoutConfig.messages.recaptchaRequired : 'reCAPTCHA is required before you can place your order.';
@@ -132,12 +168,22 @@ jQuery(document).ready(function() {
 
     function rcfwcUpdatePlaceOrderButtonsState() {
         if (!rcfwcShouldBlockSubmitFeatureRun()) {
+            rcfwcSetRecaptchaValidationState(false);
             rcfwcUpdateSubmitRequirementNote();
             return;
         }
 
         var shouldBlockNow = rcfwcShouldBlockSubmitNow();
-        jQuery(checkoutButtonSelector).prop('disabled', shouldBlockNow).attr('aria-disabled', shouldBlockNow ? 'true' : 'false');
+        jQuery(checkoutButtonSelector)
+            .attr('aria-disabled', shouldBlockNow ? 'true' : 'false')
+            .toggleClass('rcfwc-submit-blocked', shouldBlockNow)
+            .css({
+                opacity: shouldBlockNow ? '0.7' : '',
+                cursor: shouldBlockNow ? 'not-allowed' : ''
+            });
+        if (!shouldBlockNow) {
+            rcfwcSetRecaptchaValidationState(false);
+        }
         rcfwcUpdateSubmitRequirementNote();
     }
 
@@ -159,6 +205,7 @@ jQuery(document).ready(function() {
                         theme: recaptchaContainer.attr('data-theme') || 'light',
                         callback: function() {
                             jQuery('.rcfwc-checkout-recaptcha-notice').remove();
+                            rcfwcSetRecaptchaValidationState(false);
                             rcfwcUpdatePlaceOrderButtonsState();
                         },
                         'expired-callback': function() {
@@ -192,6 +239,7 @@ jQuery(document).ready(function() {
 
         event.preventDefault();
         event.stopImmediatePropagation();
+        rcfwcSetRecaptchaValidationState(true);
         rcfwcShowRecaptchaNotice();
         rcfwcUpdatePlaceOrderButtonsState();
     });
@@ -203,6 +251,7 @@ jQuery(document).ready(function() {
 
         event.preventDefault();
         event.stopImmediatePropagation();
+        rcfwcSetRecaptchaValidationState(true);
         rcfwcShowRecaptchaNotice();
         rcfwcUpdatePlaceOrderButtonsState();
     });
@@ -229,9 +278,13 @@ jQuery(document).ready(function() {
                     wp.data.dispatch('wc/store/checkout').__internalSetExtensionData('rcfwc', { token: token });
                 }
             } catch (e) {}
-            if (window.rcfwcCheckoutConfig && window.rcfwcCheckoutConfig.blockSubmitUntilRecaptcha === true) {
+            if (window.rcfwcCheckoutConfig && rcfwcIsTruthyValue(window.rcfwcCheckoutConfig.blockSubmitUntilRecaptcha)) {
                 jQuery('.rcfwc-checkout-recaptcha-notice').remove();
-                jQuery('#place_order, .wc-block-components-checkout-place-order-button').prop('disabled', false).attr('aria-disabled', 'false');
+                rcfwcSetRecaptchaValidationState(false);
+                jQuery('#place_order, .wc-block-components-checkout-place-order-button')
+                    .attr('aria-disabled', 'false')
+                    .removeClass('rcfwc-submit-blocked')
+                    .css({ opacity: '', cursor: '' });
             }
         };
         window.rcfwcRecaptchaExpired = function() {
@@ -240,8 +293,11 @@ jQuery(document).ready(function() {
                     wp.data.dispatch('wc/store/checkout').__internalSetExtensionData('rcfwc', { token: '' });
                 }
             } catch (e) {}
-            if (window.rcfwcCheckoutConfig && window.rcfwcCheckoutConfig.blockSubmitUntilRecaptcha === true) {
-                jQuery('#place_order, .wc-block-components-checkout-place-order-button').prop('disabled', true).attr('aria-disabled', 'true');
+            if (window.rcfwcCheckoutConfig && rcfwcIsTruthyValue(window.rcfwcCheckoutConfig.blockSubmitUntilRecaptcha)) {
+                jQuery('#place_order, .wc-block-components-checkout-place-order-button')
+                    .attr('aria-disabled', 'true')
+                    .addClass('rcfwc-submit-blocked')
+                    .css({ opacity: '0.7', cursor: 'not-allowed' });
             }
         };
 
