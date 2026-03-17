@@ -29,6 +29,7 @@ function register_rcfwc_settings() {
   register_setting( 'rcfwc-settings-group', 'rcfwc_woo_reset' );
   register_setting( 'rcfwc-settings-group', 'rcfwc_selected_payment_methods' );
   register_setting( 'rcfwc-settings-group', 'rcfwc_woo_checkout_pos' );
+  register_setting( 'rcfwc-settings-group', 'rcfwc_block_checkout_submit' );
   register_setting( 'rcfwc-settings-group', 'rcfwc_scripts_all' );
 }
 
@@ -256,6 +257,16 @@ function rcfwc_settings_page() {
                                         <?php esc_html_e('After Billing', 'recaptcha-woo'); ?>
                                     </option>
                                 </select>
+                            </div>
+
+                            <div class="rcfwc-form-group">
+                                <div class="rcfwc-checkbox-group">
+                                    <input type="checkbox" name="rcfwc_block_checkout_submit" class="rcfwc-checkbox" <?php if(get_option('rcfwc_block_checkout_submit')) { ?>checked<?php } ?>>
+                                    <label class="rcfwc-form-label"><?php echo __( 'Prevent checkout submit until reCAPTCHA is complete', 'recaptcha-woo' ); ?></label>
+                                </div>
+                                <p class="rcfwc-help-text">
+                                    <?php echo __( 'If enabled, the Place order button will be blocked until the customer completes the reCAPTCHA challenge.', 'recaptcha-woo' ); ?>
+                                </p>
                             </div>
 
 							<?php if ( class_exists( 'WooCommerce' ) ) { ?>
