@@ -1,4 +1,4 @@
-=== reCAPTCHA for WooCommerce ===
+=== reCAPTCHA for WooCommerce (fork) ===
 Contributors: ElliotVS, RelyWP
 Tags: recaptcha,woocommerce,checkout,spam,protect
 Donate link: https://www.paypal.com/donate/?hosted_button_id=RX28BBH7L5XDS

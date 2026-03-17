@@ -8,7 +8,7 @@ add_action('admin_menu', 'rcfwc_create_menu');
 function rcfwc_create_menu() {
 
 	//create new top-level menu
-	add_submenu_page( 'options-general.php', 'reCAPTCHA for WooCommerce', 'reCAPTCHA WooCommerce', 'manage_options', __FILE__, 'rcfwc_settings_page' );
+	add_submenu_page( 'options-general.php', 'reCAPTCHA for WooCommerce (fork)', 'reCAPTCHA WooCommerce (fork)', 'manage_options', __FILE__, 'rcfwc_settings_page' );
 
 	//call register settings function
 	add_action( 'admin_init', 'register_rcfwc_settings' );
@@ -109,7 +109,7 @@ function rcfwc_settings_page() {
 <div class="rcfwc-modern-wrap">
     <div class="rcfwc-container">
         <div class="rcfwc-header">
-            <h1><?php echo __( 'reCAPTCHA for WooCommerce', 'recaptcha-woo' ); ?></h1>
+            <h1><?php echo __( 'reCAPTCHA for WooCommerce (fork)', 'recaptcha-woo' ); ?></h1>
             <p><?php echo __( 'Protect your WooCommerce forms and checkout with Google reCAPTCHA to help prevent spam and abuse.', 'recaptcha-woo' ); ?></p>
         </div>
 
