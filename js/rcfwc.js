@@ -1,15 +1,42 @@
 /* Woo Checkout */
-jQuery( document ).ready(function() {
-    jQuery( document.body ).on( 'update_checkout updated_checkout applied_coupon_in_checkout removed_coupon_in_checkout checkout_error', function() {
-        if(jQuery('.g-recaptcha').length > 0) {
-            if (typeof grecaptcha !== "undefined" && typeof grecaptcha.reset === "function") {
-                var count = 0;
-                jQuery(".g-recaptcha").each(function () {
-                    grecaptcha.reset(count);
-                    count++;
-                });
-            }
+jQuery(document).ready(function() {
+    function rcfwcRenderOrResetClassicWidgets() {
+        if (typeof grecaptcha === 'undefined' || typeof grecaptcha.render !== 'function') {
+            return;
         }
+
+        jQuery('.g-recaptcha').each(function() {
+            var recaptchaContainer = jQuery(this);
+            var existingWidgetId = recaptchaContainer.attr('data-rcfwc-widget-id');
+            var hasRenderedIframe = recaptchaContainer.find('iframe').length > 0;
+
+            if (!existingWidgetId && !hasRenderedIframe) {
+                try {
+                    var newlyRenderedWidgetId = grecaptcha.render(this, {
+                        sitekey: recaptchaContainer.attr('data-sitekey'),
+                        theme: recaptchaContainer.attr('data-theme') || 'light'
+                    });
+                    recaptchaContainer.attr('data-rcfwc-widget-id', newlyRenderedWidgetId);
+                } catch (error) {
+                    // Ignore render timing errors during checkout fragment updates.
+                }
+                return;
+            }
+
+            if (existingWidgetId && typeof grecaptcha.reset === 'function') {
+                try {
+                    grecaptcha.reset(parseInt(existingWidgetId, 10));
+                } catch (error) {
+                    // Ignore stale widget IDs after checkout fragment replacement.
+                }
+            }
+        });
+    }
+
+    rcfwcRenderOrResetClassicWidgets();
+
+    jQuery(document.body).on('update_checkout updated_checkout applied_coupon_in_checkout removed_coupon_in_checkout checkout_error', function() {
+        setTimeout(rcfwcRenderOrResetClassicWidgets, 0);
     });
 });
 
