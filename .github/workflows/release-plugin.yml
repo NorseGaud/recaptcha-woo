@@ -70,24 +70,8 @@ jobs:
 
       - name: Build plugin zip
         run: |
-          package_root_path="${RUNNER_TEMP}/plugin-package"
-          package_plugin_path="${package_root_path}/${PLUGIN_SLUG}"
-          rm -rf "${package_root_path}"
-          mkdir -p "${package_plugin_path}"
-
-          rsync -a ./ "${package_plugin_path}/" \
-            --exclude '.git/' \
-            --exclude '.github/' \
-            --exclude '.cursor/' \
-            --exclude '.idea/' \
-            --exclude '.vscode/' \
-            --exclude 'node_modules/' \
-            --exclude '*.zip'
-
-          (
-            cd "${package_root_path}"
-            zip -r "${{ steps.plugin_version.outputs.zip_file_path }}" "${PLUGIN_SLUG}"
-          )
+          chmod +x ./build-plugin-zip.bash
+          PLUGIN_MAIN_FILE="${PLUGIN_MAIN_FILE}" ./build-plugin-zip.bash "${GITHUB_WORKSPACE}" "${{ steps.plugin_version.outputs.zip_file_path }}"
 
       - name: Upload release zip
         uses: softprops/action-gh-release@v2
