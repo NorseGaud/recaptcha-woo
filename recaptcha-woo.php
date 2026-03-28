@@ -2,7 +2,7 @@
 /**
  * Plugin Name: reCAPTCHA for WooCommerce (fork)
 * Description: Add Google reCAPTCHA to your WooCommerce Checkout, Login, and Registration Forms.
-* Version: 10.0.0
+* Version: 10.1.0
 * Author: ElliotVS, RelyWP
 * Author URI: https://www.relywp.com
 * License: GPLv3 or later
