@@ -132,6 +132,51 @@ jQuery(document).ready(function() {
         });
     }
 
+    function rcfwcUpdatePayPalSmartButtonsBlockState() {
+        var paypalSmartButtonContainerSelector = '.paypal-buttons';
+
+        if (!rcfwcShouldBlockSubmitFeatureRun()) {
+            jQuery('.rcfwc-paypal-pointer-block-overlay').remove();
+            return;
+        }
+
+        var shouldBlockPayPalPointerEvents = rcfwcShouldBlockSubmitNow();
+        jQuery(paypalSmartButtonContainerSelector).each(function() {
+            var payPalButtonsContainer = jQuery(this);
+
+            if (!shouldBlockPayPalPointerEvents) {
+                payPalButtonsContainer.children('.rcfwc-paypal-pointer-block-overlay').remove();
+                return;
+            }
+
+            if (!payPalButtonsContainer.is(':visible')) {
+                payPalButtonsContainer.children('.rcfwc-paypal-pointer-block-overlay').remove();
+                return;
+            }
+
+            var blockPayPalIframeClicksOverlay = payPalButtonsContainer.children('.rcfwc-paypal-pointer-block-overlay');
+            if (!blockPayPalIframeClicksOverlay.length) {
+                blockPayPalIframeClicksOverlay = jQuery('<div>', {
+                    class: 'rcfwc-paypal-pointer-block-overlay',
+                    'aria-hidden': 'true'
+                });
+                payPalButtonsContainer.append(blockPayPalIframeClicksOverlay);
+            }
+
+            blockPayPalIframeClicksOverlay.css({
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 10000,
+                cursor: 'not-allowed',
+                background: 'transparent',
+                boxSizing: 'border-box'
+            });
+        });
+    }
+
     function rcfwcUpdateSubmitRequirementNote() {
         var checkoutConfig = rcfwcGetCheckoutConfig();
         var recaptchaRequiredMessage = (checkoutConfig.messages && checkoutConfig.messages.recaptchaRequired) ? checkoutConfig.messages.recaptchaRequired : 'reCAPTCHA is required before you can place your order.';
@@ -170,6 +215,7 @@ jQuery(document).ready(function() {
         if (!rcfwcShouldBlockSubmitFeatureRun()) {
             rcfwcSetRecaptchaValidationState(false);
             rcfwcUpdateSubmitRequirementNote();
+            rcfwcUpdatePayPalSmartButtonsBlockState();
             return;
         }
 
@@ -185,6 +231,7 @@ jQuery(document).ready(function() {
             rcfwcSetRecaptchaValidationState(false);
         }
         rcfwcUpdateSubmitRequirementNote();
+        rcfwcUpdatePayPalSmartButtonsBlockState();
     }
 
     function rcfwcRenderOrResetClassicWidgets() {
@@ -267,6 +314,19 @@ jQuery(document).ready(function() {
     jQuery(document.body).on('change', 'input[name="payment_method"]', function() {
         setTimeout(rcfwcUpdatePlaceOrderButtonsState, 0);
     });
+
+    jQuery(document).on('click', '.rcfwc-paypal-pointer-block-overlay', function(event) {
+        if (!rcfwcShouldBlockSubmitNow()) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        rcfwcSetRecaptchaValidationState(true);
+        rcfwcShowRecaptchaNotice();
+    });
+
+    window.rcfwcSyncPaypalButtonBlockingWithRecaptcha = rcfwcUpdatePayPalSmartButtonsBlockState;
 });
 
 /* Woo Checkout Block */
@@ -286,6 +346,9 @@ jQuery(document).ready(function() {
                     .attr('aria-disabled', 'false')
                     .removeClass('rcfwc-submit-blocked')
                     .css({ opacity: '', cursor: '' });
+                if (typeof window.rcfwcSyncPaypalButtonBlockingWithRecaptcha === 'function') {
+                    window.rcfwcSyncPaypalButtonBlockingWithRecaptcha();
+                }
             }
         };
         window.rcfwcRecaptchaExpired = function() {
@@ -299,6 +362,9 @@ jQuery(document).ready(function() {
                     .attr('aria-disabled', 'true')
                     .addClass('rcfwc-submit-blocked')
                     .css({ opacity: '0.7', cursor: 'not-allowed' });
+                if (typeof window.rcfwcSyncPaypalButtonBlockingWithRecaptcha === 'function') {
+                    window.rcfwcSyncPaypalButtonBlockingWithRecaptcha();
+                }
             }
         };
 
