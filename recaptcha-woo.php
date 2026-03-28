@@ -69,6 +69,14 @@ function rcfwc_script_enqueue() {
 			'guestOnly'                 => (bool) get_option( 'rcfwc_guest_only' ),
 			'isUserLoggedIn'            => is_user_logged_in(),
 			'skippedPaymentMethods'     => (array) get_option( 'rcfwc_selected_payment_methods', array() ),
+			'paypalCheckoutGatewayIds'  => apply_filters(
+				'rcfwc_paypal_checkout_gateway_ids',
+				array(
+					'ppcp-gateway',
+					'ppec_paypal',
+					'paypal',
+				)
+			),
 			'messages'                  => array(
 				'completeRecaptcha' => __( 'Please complete the reCAPTCHA to verify that you are not a robot.', 'recaptcha-woo' ),
 				'recaptchaRequired' => __( 'reCAPTCHA is required before you can place your order.', 'recaptcha-woo' ),

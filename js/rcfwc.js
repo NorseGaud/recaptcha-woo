@@ -91,6 +91,28 @@ jQuery(document).ready(function() {
         return !rcfwcHasAnyRecaptchaResponse();
     }
 
+    function rcfwcIsPayPalSmartButtonRecaptchaSkipped() {
+        var checkoutConfig = rcfwcGetCheckoutConfig();
+        var skippedPaymentMethodIds = checkoutConfig.skippedPaymentMethods;
+        var paypalCheckoutGatewayIds = checkoutConfig.paypalCheckoutGatewayIds;
+        if (!Array.isArray(skippedPaymentMethodIds) || !Array.isArray(paypalCheckoutGatewayIds)) {
+            return false;
+        }
+        for (var paypalGatewayIndex = 0; paypalGatewayIndex < paypalCheckoutGatewayIds.length; paypalGatewayIndex++) {
+            if (skippedPaymentMethodIds.indexOf(paypalCheckoutGatewayIds[paypalGatewayIndex]) !== -1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function rcfwcShouldBlockPayPalSmartButtonsNow() {
+        if (rcfwcIsPayPalSmartButtonRecaptchaSkipped()) {
+            return false;
+        }
+        return rcfwcShouldBlockSubmitNow();
+    }
+
     function rcfwcShowRecaptchaNotice() {
         var checkoutConfig = rcfwcGetCheckoutConfig();
         var message = (checkoutConfig.messages && checkoutConfig.messages.completeRecaptcha) ? checkoutConfig.messages.completeRecaptcha : 'Please complete the reCAPTCHA challenge.';
@@ -140,7 +162,7 @@ jQuery(document).ready(function() {
             return;
         }
 
-        var shouldBlockPayPalPointerEvents = rcfwcShouldBlockSubmitNow();
+        var shouldBlockPayPalPointerEvents = rcfwcShouldBlockPayPalSmartButtonsNow();
         jQuery(paypalSmartButtonContainerSelector).each(function() {
             var payPalButtonsContainer = jQuery(this);
 
@@ -315,7 +337,7 @@ jQuery(document).ready(function() {
     });
 
     jQuery(document).on('click', '.rcfwc-paypal-pointer-block-overlay', function(event) {
-        if (!rcfwcShouldBlockSubmitNow()) {
+        if (!rcfwcShouldBlockPayPalSmartButtonsNow()) {
             return;
         }
 
